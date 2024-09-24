@@ -1,5 +1,5 @@
 ---
-title: "Proyecto_Final_diplomado"
+title: "Proyecto_Final_Diplomado"
 author: "Nice A. Huaman"
 date: "`r Sys.Date()`"
 format: 
