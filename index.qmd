@@ -1,0 +1,47 @@
+---
+title: "Proyecto_Final_diplomado"
+author: "Nice A. Huaman"
+date: "`r Sys.Date()`"
+format: 
+   html:
+     toc: true
+     lang: es
+     code-fold: true
+     code-summary: "Haz clic"
+     theme: journal
+     chunk_output_type: inline
+   
+---
+
+```{r setup, include=FALSE}
+
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 7,
+  fig.height = 5,
+  fig.align = "center"
+)
+
+```
+
+```{r instalaciones no se ejecuta, echo=FALSE, eval=FALSE}
+install.packages("tidyverse")
+library(tidyverse)
+library(openxlsx)
+```
+
+```{r carga de datos, include=FALSE}
+B10k_data <- openxlsx::read.xlsx("bases/Data_sheet_rocotal.xlsx")
+#Es un fragmento de la tabla (incompleto)
+```
+
+## Ejemplo
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+
