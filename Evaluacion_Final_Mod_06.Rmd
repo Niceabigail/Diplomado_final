@@ -1,0 +1,130 @@
+---
+title: "Evaluacion_Final_Mod_06."
+author: "Nice Abigail"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+```{r}
+library(tidyverse)
+library(openxlsx)
+library(performance)
+library(ggstatsplot)
+library(rstatix)
+library(pwr)
+library(pwr2)
+library(simr)
+library(nortest)
+library(car)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+```{r setup, include=FALSE}
+# PESO EN RELACIÓN A LA FAMILIA DE AVES
+# Base-------------------------------------------
+aves <- openxlsx::read.xlsx("bases/Base_completa_2023.xlsx")
+View(aves)
+
+str(aves)
+
+table(aves$Family)
+
+
+# familias con al menos 10 observaciones
+aves_filtradas <- aves %>%
+  group_by(Family) %>%
+  filter(n() >= 10)
+
+table(aves_filtradas$Family)
+
+
+aves_filtradas <- aves_filtradas %>%
+  mutate(Family = str_trim(Family)) %>%  
+  mutate(Family = case_when(
+    Family == "Trochilidae" ~ "Trochilidae", 
+    TRUE ~ Family  
+  )) 
+
+unique(aves_filtradas$Family)
+
+# NORMALIDAD-----------------------------------------
+
+masterX::NormTests(aves_filtradas$Weight)
+
+# Shapiro-Wilk (SW): p-valor es 3.88e-12 es extremadamente bajo, se rechaza la hipótesis nula y sigue una distribución normal
+# Kolmogorov-Smirnov (KS): el p-valor es 7.27e-161 es extremadamente bajo.  se rechaza la hipótesis nula de normalidad
+# Lilliefors (LF): el p-valor: 1.19e-14 Nuevamente,los datos no son normales.
+# Anderson-Darling (AD): el p-valor es 3.05e-14. Este es otro p-valor muy pequeño, lo que refuerza que los datos no se ajustan a una distribución normal.
+# Cramér-von Mises (CVM): el p-valor es 9.52e-10 indicando que los datos no siguen una distribución normal
+# Zerod (ZC) y ZA no siguen una distribución normal.
+
+
+by(aves_filtradas$Weight, aves_filtradas$Family, shapiro.test)
+
+# En las familias Emberizidae, Parulidae, Thraupidae, Turdidae y Tyrannidae el p-valor > 0.05, no se rechaza la hipotesis nula por lo y no se tiene evidencia de rechazar la normalidad.
+#En las familias Furnariidae, Pipridae, Thamnophilidae y Trochilidae se rechaza la hipótesis nula ylos datos no son normales
+
+# En caso con familias con distribución normal podría optar por hacer pruebas paramétricas ANOVA si las varianzas son homogéneas.
+
+familias_norm <- c("Emberizidae", "Parulidae","Thraupidae" , "Turdidae", "Tyrannidae")
+
+normal_families <- aves_filtradas %>% 
+  filter(Family %in% familias_norm)
+
+leveneTest(Weight ~ Family, data = normal_families)
+
+#El valor p de 0.003668 es menor que 0.05, se rechaza la hipótesis nula. Esto indica que las varianzas no son homogéneas entre las familias (las variaciones en el peso (Weight) son diferentes entre las familias evaluadas).
+
+
+# Debido a que las varianzas no son homogeneas, además de que quiero hacer un analisis en grupo de estas 9 familias optaré por usar la prueba de Kruskal-Wallis. Tambien podría usar Wilcoxon para comparar estas familias en grupos de dos  posteriormente.
+
+
+# HOMOGENEIDAD DE VARIANZAS---------
+leveneTest(Weight ~ Family, data = aves_filtradas)
+#El test de Levene indica que las varianzas del peso (Weight)entre las diferentes familias de aves no son homogéneas (1.077e-07) (no cumple con una de las asunciones de ANOVA).
+
+
+# kRUSKALL WALLIS----------
+kruskal.test(Weight ~ Family, data = aves_filtradas)
+# El p valor p es  (< 2.2e-16) menor que 0.05, podemos rechazar la hipótesis nula de que todas las familias tienen la misma distribución de peso, existe diferencias significativas
+
+#GRAFICO QQPLOT --------------------------------
+
+qqnorm(na.omit(aves_filtradas$Weight))
+qqline(na.omit(aves_filtradas$Weight), col = "red")
+# En el gráfico de qqplot de puede observar que existe un sesgo mostrando que no habría normalidad, siendo consistente con las pruebas de normalidad.
+
+#GRAFICO DE DENSIDAD ----------------------------
+
+plot(density(na.omit(aves_filtradas$Weight)), 
+     main = "Distribución de la Densidad del Peso de Aves", 
+     xlab = "Peso (gr)", 
+     ylab = "Densidad")
+
+# Los datos tienen 4 picos (multimodal) lo que indica que hay 4 subgrupos distintos y es asimétrico a la izquierda indicando que no se ajustan a una distribución normal. Ademas se muestra un subgrupo separado.
+
+
+#GRÁFICO DE BOXPLOT ------------------
+
+ggplot(aves_filtradas, aes(x = Family, y = Weight, fill = Family)) +
+  geom_boxplot() +
+  labs(title = "Distribución del Peso por Familia de Aves", 
+       x = "Familia", 
+       y = "Peso (gr)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + theme_minimal()
+
+# Los tamaños de las cajas (IQR) varian entre si, eso indica que ciertas familias tienen más variabilidad en los pesos de las aves,hay diferencias en las distribuciones de los grupos y no existe homogeneidad de varianzas.
+
+#En la mayoría de los casos, la mediana esta cerca a a uno de los cuartiles lo que demuestra asimetría o sesgo; ademas, haciendo una comparación entre las medianas de las 9 familias se notan diferencias en las distribuciones de estas.
+
+#No utilicé ggbetweenstats porque, visualmente, los datos aparecen muy aglomerados, lo que dificulta la comprensión de la información. Sin embargo, esta gráfico sería muy útil, ya que te permite visualizar las diferencias y las distribuciones de forma detallada.
+
+#Finalizar comentando que sería ideal utilizar pruebas de Wilcoxon por pares para determinar específicamente cuáles grupos son diferentes entre sí en base a la prueba de kruskal-wallis
+
+
